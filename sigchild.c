@@ -11,6 +11,7 @@
 #include <sys/ioctl.h>
 #include <sys/termios.h>
 #include <stdio.h>
+#include <ctype.h>
 // typedef struct Job_t Job;
 // typedef struct JobList_t JobList;
 #define MAX 64
@@ -18,7 +19,15 @@
 #define DELETED 1
 #define EMPTY 0
 #define MAX_LEN 256
-
+#define NONE "\033[m"
+#define RED "\033[0;31m"
+#define YELLOW "\033[1;33m"
+#define CYAN "\033[0;36m"
+#define GREEN "\033[0;32;32m"
+#define GRAY "\033[1;30m"
+#define WHITE "\033[0;37m"
+#define PURPLE "\033[0;35m"
+#define BLUE "\033[0;34m"
 struct Job {
     char command[64];
     pid_t pid;
@@ -37,7 +46,7 @@ struct Job {
 // char jobs[MAX][MAX];
 int child_control,childID;
 struct Job jobs[MAX];
-char latest_command[64];
+char latest_command[64],global_color[10];
 int size_job, is_foreground_process,stop,interrupt, exit_status;
 int find_first_job_id_available() {
     for (int i=0;i<MAX;i++) {
@@ -486,7 +495,19 @@ void  execute(char **argv)
         sigaction(SIGCHLD, &child_action, NULL); 
     }
 }
-
+void red(){
+    printf(PURPLE);
+}
+void to_upper(char *color) {
+    int n = strlen(color); //<-- getting the length of 's'.  
+    char COLOR[n]; 
+    for (int i = 0; i < n; i++)
+    {
+        COLOR[i] = toupper(color[i]); 
+    }
+    strcpy(color,COLOR);
+    return;
+} 
 void read_line(char *line) {
     char *argv[64];
     split(line, argv);
@@ -495,6 +516,36 @@ void read_line(char *line) {
     // }
     if(!strcmp(argv[0],"echo") && !strcmp(argv[1],"$?")) {
         printf("%d\n",exit_status);
+    }
+    else if(!strcmp(argv[0],"color")) {
+        char color[10];
+        strcpy(color,argv[1]);
+        to_upper(color);
+        if(!strcmp(color, "RED")){
+            strcpy(global_color,RED);
+        }
+        else if(!strcmp(color, "YELLOW")){
+            strcpy(global_color,YELLOW);
+        }
+        else if(!strcmp(color, "GREEN")){
+            strcpy(global_color,GREEN);
+        }
+        else if(!strcmp(color, "NONE")){
+            strcpy(global_color,NONE);
+        }
+        else if(!strcmp(color, "GRAY")){
+            strcpy(global_color,GRAY);
+        }
+        else if(!strcmp(color, "WHITE")){
+            strcpy(global_color,WHITE);
+        }
+        else if(!strcmp(color, "PURPLE")){
+            strcpy(global_color,PURPLE);
+        }
+        else if(!strcmp(color, "BLUE")){
+            strcpy(global_color,BLUE);
+        }
+        // printf(argv[1]);
     }
     else if (!strcmp(argv[0],"exit")) {
         exit(atoi(argv[1]));
@@ -574,7 +625,9 @@ void check_CC(int sig) {
     // raise (SIGTSTP);
 }
 void start_shell() {
-    printf("Starting IC shell\n");
+    printf(BLUE "Starting IC shell\n");
+    strcpy(global_color,PURPLE);
+    // global_color = WHITE;
     // jobs = (struct Job*) malloc(sizeof(struct Job));
     // struct sigaction action;
     // action.sa_handler = kill_zombies;
@@ -610,7 +663,8 @@ void start_shell() {
         // sigaction(SIGINT, &CC_action, NULL); 
         // printf("child control (%d)\n",child_control);
         if(!child_control){
-            printf("icsh $ ");
+            printf(GREEN "icsh $ ");
+            printf("%s",global_color);
             char line[64];
             if(fgets(line, sizeof(line), stdin)){
                 // char tmp_command[64];
@@ -658,6 +712,7 @@ void run_file(int argc,char **argv){
     }
 }
 int main(int argc, char **argv) {
+    // printf("\033[1;37;41m" "mysh>");
     if(argc>1){
         run_file(argc,argv);
     }
