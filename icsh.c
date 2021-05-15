@@ -12,11 +12,10 @@
 #include <sys/termios.h>
 #include <stdio.h>
 #include <ctype.h>
-#define MAX 64
+#define MAX_JOBS 64
 #define OCCUPIED 2
 #define DELETED 1
 #define EMPTY 0
-#define MAX_LEN 256
 #define NONE "\033[m"
 #define RED "\033[0;31m"
 #define YELLOW "\033[1;33m"
@@ -36,11 +35,11 @@ struct Job {
 
 int child_control,child_id;
 
-struct Job jobs[MAX];
+struct Job jobs[MAX_JOBS];
 char latest_command[64],global_color[10];
 int size_job, is_foreground_process,stop,interrupt, exit_status;
 int find_first_job_id_available() {
-    for (int i=0;i<MAX;i++) {
+    for (int i=0;i<MAX_JOBS;i++) {
         if (jobs[i].status == EMPTY || jobs[i].status == DELETED){
             return i;
         }
