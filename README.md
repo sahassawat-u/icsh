@@ -1,2 +1,2 @@
 # icsh
-This is a custom shell with some features
+This is a custom shell with some features.
