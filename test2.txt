@@ -1,5 +1,0 @@
-Makefile
-icsh
-icsh.c
-test.sh
-test2.txt
