@@ -12,8 +12,6 @@
 #include <sys/termios.h>
 #include <stdio.h>
 #include <ctype.h>
-// typedef struct Job_t Job;
-// typedef struct JobList_t JobList;
 #define MAX 64
 #define OCCUPIED 2
 #define DELETED 1
