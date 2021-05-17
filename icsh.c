@@ -12,10 +12,11 @@
 #include <sys/termios.h>
 #include <stdio.h>
 #include <ctype.h>
-#define MAX_JOBS 64
+#define MAX 64
 #define OCCUPIED 2
 #define DELETED 1
 #define EMPTY 0
+#define MAX_LEN 256
 #define NONE "\033[m"
 #define RED "\033[0;31m"
 #define YELLOW "\033[1;33m"
@@ -34,12 +35,11 @@ struct Job {
 };
 
 int child_control,child_id;
-
-struct Job jobs[MAX_JOBS];
+struct Job jobs[MAX];
 char latest_command[64],global_color[10];
 int size_job, is_foreground_process,stop,interrupt, exit_status;
 int find_first_job_id_available() {
-    for (int i=0;i<MAX_JOBS;i++) {
+    for (int i=0;i<MAX;i++) {
         if (jobs[i].status == EMPTY || jobs[i].status == DELETED){
             return i;
         }
@@ -106,13 +106,13 @@ void kill_zombies(int sig) {
             delete_job(pid);
         } 
         if(WIFSIGNALED(status)){
-            printf("hello signal\n");
+            // printf("hello signal\n");
         }
         if(WIFSTOPPED(status)){
-            printf("hello stop\n");
+            // printf("hello stop\n");
         }
         if(WIFCONTINUED(status)){
-            printf("hello cont\n");
+            // printf("hello cont\n");
         }
     }
 }
@@ -136,11 +136,18 @@ void printJobs() {
         }
     }
 }
+int check_job(int job_id) {
+    if(jobs[job_id].status==OCCUPIED) {
+        return 1;
+    }
+    return 0;
+}
 void fg_command(int job_id,int len) {
     int status;
     if (len < 3) {
         return ;
     }
+    if(check_job(job_id)){
     int tmp_child_id = jobs[job_id].pid;
     int is_suspended = 0;
     if(!strcmp(jobs[job_id].shstatus,"suspended")) {
@@ -151,7 +158,6 @@ void fg_command(int job_id,int len) {
         child_control = 1;
         child_id = tmp_child_id;
     }
-    // printf("status (%s)\n",)
     setpgid(child_id, child_id);
     tcsetpgrp(0, child_id);
     if(is_suspended){
@@ -169,6 +175,9 @@ void fg_command(int job_id,int len) {
     tcsetpgrp(0, getpid());
     signal(SIGTTOU, SIG_DFL);
     signal(SIGTTIN, SIG_DFL);
+    } else {
+        printf("fg: (%d): no such job\n",job_id);
+    }
     // child_control = 0;
 }
 void bg_command(char **argv,int len) {
@@ -178,8 +187,12 @@ void bg_command(char **argv,int len) {
     memmove(&argv[1][0], &argv[1][1], strlen(argv[1]));
     int job_id = atoi(argv[1]);
     --job_id;
-    printf("[%d]+ %s &\n",job_id+1,jobs[job_id].command);
-    kill(jobs[job_id].pid,SIGCONT);
+    if(check_job(job_id)){
+        printf("[%d]+ %s &\n",job_id+1,jobs[job_id].command);
+        kill(jobs[job_id].pid,SIGCONT);
+    } else {
+        printf("bg: (%d): no such job\n",job_id);
+    }
 }
 void  execute(char **argv)
 {
@@ -301,8 +314,12 @@ void  execute(char **argv)
             }
         } else{
             is_foreground_process = 1;
-            while ((wait(&status) != pid && !stop) || interrupt){
+            while ((wait(&status) != pid && !stop) && !interrupt){
+                // printf()
                  exit_status = WEXITSTATUS(status);
+            }
+            if(interrupt){
+                interrupt = 0;
             }
             // exit_status = WEXITSTATUS(status);
             if(stop){
@@ -310,7 +327,7 @@ void  execute(char **argv)
                 add_to_bg_jobs(latest_command,pid,"suspended");
                 stop = 0;
             }
-            interrupt = 0;
+            is_foreground_process = 0;
         }
         sigaction(SIGCHLD, &child_action, NULL); 
     }
@@ -396,13 +413,22 @@ void read_line(char *line) {
 }
 void check_CZ(int sig) {
     pid_t pid;
+    exit_status = 146;
+    // printf("pid (%d)\n",pid);
     if(is_foreground_process) {
         int idx = find_first_job_id_available();
+        // char copied_command[20];/
+        // strcpy(copied_command,latest_command);
+        // copied_command[strlen(copied_command)-1]='\0';
+        if (latest_command[strlen(latest_command)-1]=='\0'){
+            printf("\n");
+        }
+        // printf("c (->%c<-)",latest_command[strlen(latest_command)-1]);
         printf("\n[%d]+ suspended       %s",idx+1,latest_command);
+        printf("");
         kill(pid,SIGTSTP);
         stop = 1;
         is_foreground_process = 0;
-        exit_status = 146;
     }
      else {
         printf("\n");
@@ -410,11 +436,11 @@ void check_CZ(int sig) {
 }
 void check_CC(int sig) {
     pid_t pid;
-    if(is_foreground_process) {
-        interrupt = 0;
+    exit_status = 130;
+    if(is_foreground_process && pid) {
+        interrupt = 1;
         printf("\n");
         is_foreground_process = 0;
-        exit_status = 130;
         kill(pid, SIGKILL);
     } else {
         printf("\n");
@@ -423,10 +449,11 @@ void check_CC(int sig) {
 void features_detail(){
     printf("new feature(s) added\n");
     printf("    (1) color command: to change the color of command line\n");
+    printf("                     : --help to show info\n");
 }
 void start_shell() {
-    printf(BLUE "Starting IC shell\n");
-    strcpy(global_color,PURPLE);
+    printf("Starting IC shell\n");
+    strcpy(global_color,WHITE);
     features_detail();
     pid_t pid = getpid();
     setpgid(pid, pid);
@@ -488,3 +515,5 @@ int main(int argc, char **argv) {
     }
     return 0;
 }
+
+  
